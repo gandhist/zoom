@@ -4,7 +4,7 @@ ZOOM API FOR LARAVEL PROJECTS
 ## REQUIREMENTS
 - laravel min 5.7
 - PHP version 7.2
-- table with name **ZoomCredentials
+- table with name **zoom_credentials**
 
 ## tables zoom_credentials
 CREATE TABLE `zoom_credentials` (
