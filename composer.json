@@ -1,0 +1,12 @@
+{
+    "name": "gandhist/zoom",
+    "description": "package for connecting your laravel to Zoom RESTfull API",
+    "type": "library",
+    "license": "MIT",
+    "require": {},
+    "autoload" : {
+        "psr-4" : {
+            "Gandhist\\Zoom\\" : "src/"
+        }
+    }
+}
