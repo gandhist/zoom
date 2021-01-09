@@ -15,7 +15,7 @@ CREATE TABLE `zoom_credentials` (
   `client_id` varchar(100) DEFAULT NULL,
   `client_secret` varchar(100) DEFAULT NULL,
   `code` varchar(200) DEFAULT NULL COMMENT 'The authorization code supplied to the callback by Zoom. ketika aplikasi di install',
-  `redirect_uri` varchar(100) DEFAULT 'https://sipp.p3sm.or.id/' COMMENT 'default base_url',
+  `redirect_uri` varchar(100) DEFAULT 'https://yourapp.com/' COMMENT 'default base_url',
   `authorization` varchar(100) DEFAULT NULL COMMENT 'basic Client_ID:Client_Secret, Bearer',
   `token` text,
   `refresh_token` text,
