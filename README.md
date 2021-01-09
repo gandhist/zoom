@@ -35,7 +35,7 @@ insert  into `zoom_credentials`(`id`,`req_type`,`end_point`,`grant_type`,`client
 
 
 ## INSTALLATION
-- create model with name ZoomCredentials : we will store all credentials from OAUTH ZOOM API here
+- create model at **app/Models** with name ZoomCredentials : we will store all credentials from OAUTH ZOOM API here
 - fill all field in table zoom_credentials, note: refresh token only for **refresh_token** no matter its redudant
 - set environtment
 ZOOM_ENDPOINT=https://api.zoom.us/v2/
