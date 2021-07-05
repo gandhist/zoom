@@ -31,7 +31,7 @@ class Meetings
      * {another zoom response}
      */
      public static function list($url, $body){
-        $refresh = self::refreshToken();
+        $refresh = self::checkStatusCode();
         $token = $refresh['access_token'];
         $ch = curl_init();
 
@@ -74,7 +74,7 @@ class Meetings
      * {another zoom response}
      */
      public static function createMeeting($url, $body){
-        $refresh = self::refreshToken();
+        $refresh = self::checkStatusCode();
         $token = $refresh['access_token'];
         $ch = curl_init();
 
@@ -121,7 +121,7 @@ class Meetings
      * {another zoom response}
      */
      public static function updateMeeting($url, $body){
-        $refresh = self::refreshToken();
+        $refresh = self::checkStatusCode();
         $token = $refresh['access_token'];
         $ch = curl_init();
 
@@ -176,7 +176,7 @@ class Meetings
      * {another zoom response}
      */
      public static function deleteMeeting($url, $body){
-        $refresh = self::refreshToken();
+        $refresh = self::checkStatusCode();
         $token = $refresh['access_token'];
         $ch = curl_init();
 
@@ -228,7 +228,7 @@ class Meetings
      * {another zoom response}
      */
      public static function addRegistrant($url, $body){
-        $refresh = self::refreshToken();
+        $refresh = self::checkStatusCode();
         $token = $refresh['access_token'];
         $ch = curl_init();
 
@@ -273,14 +273,16 @@ class Meetings
      */
      public static function getAccount(){
         $account_id = env('ZOOM_USERID');
-        $refresh = self::refreshToken();
-        if($refresh['http_code'] == 200) {
-            $token = $refresh['access_token'];
-        }
-        else {
-            $s = \App\Models\ZoomCredentials::where('grant_type', 'access_token')->first();
-            $token = $s->access_token;
-        }
+        // $refresh = self::refreshToken();
+        // if($refresh['http_code'] == 200) {
+        //     $token = $refresh['access_token'];
+        // }
+        // else {
+        //     $s = \App\Models\ZoomCredentials::where('grant_type', 'access_token')->first();
+        //     $token = $s->access_token;
+        // }
+        $s = \App\Models\ZoomCredentials::where('grant_type', 'access_token')->first();
+        $token = $s->token;
         $ch = curl_init();
 
         $curl_options = array(
@@ -307,10 +309,34 @@ class Meetings
             ];
         }
         return array_merge($data,$result);
-     } 
+     }
 
-     /**
+    /**
      * REFRESH TOKEN
+     * need model ZoomCredentials for accessing refresh token from table zoom_credentials
+     */
+    public static function checkStatusCode(){
+        $getAccount = self::getAccount();
+        switch ($getAccount['http_code']) {
+            case '401':
+                # unauthorized
+                $refresh = self::refreshToken();
+                return $refresh;
+                break;
+            default:
+                # get current token
+                $s = \App\Models\ZoomCredentials::where('grant_type', 'access_token')->first();
+                $token = $s->token;
+                return [
+                    'access_token' => $token
+                ];
+                break;
+        }
+    }
+
+    /**
+     * REFRESH TOKEN
+     * first check if while get user is 401 or unauthorized, so wi will request for refresh token
      * need model ZoomCredentials for accessing refresh token from table zoom_credentials
      * row with grant_type 'refresh_token' must filled with credentials oauth from zoom api
      * RESPONSES
@@ -321,52 +347,58 @@ class Meetings
      * {another zoom response}
      */
      public static function refreshToken(){
-        $token = \App\Models\ZoomCredentials::where('grant_type', 'refresh_token')->first();
-        $refresh_token = $token->token;
-        $auth = base64_encode($token->client_id.":".$token->client_secret);
-        $ch = curl_init();
+        if(env('APP_ENV') == 'production'){
+            $token = \App\Models\ZoomCredentials::where('grant_type', 'refresh_token')->first();
+            $refresh_token = $token->token;
+            $auth = base64_encode($token->client_id.":".$token->client_secret);
+            $ch = curl_init();
 
-        $curl_options = array(
-            CURLOPT_URL => "https://zoom.us/oauth/token?grant_type=refresh_token&refresh_token=$refresh_token",
-            CURLOPT_HTTPHEADER => array(
-                'Content-Type: application/json',
-                'Accept: application/json',
-                'Authorization: Basic ' .$auth
-            ),
-            CURLOPT_RETURNTRANSFER => 1
-        );
-        $curl_options[CURLOPT_POST] = 1;
-        curl_setopt_array($ch, $curl_options);
-        $result = curl_exec($ch);
-        $info = curl_getinfo($ch);
-        if ($result === false) {
-            throw new \Exception('CURL Error: ' . curl_error($ch), curl_errno($ch));
-        } else {
-            $result = json_decode($result, true);
-            $data = [
-                'url' => $info['url'],
-                'http_code' => $info['http_code'],
-                'primary_ip' => $info['primary_ip'],
-                'local_ip' => $info['local_ip'],
-            ];
-            if($info['http_code'] != 401){
-                $token->refresh_token = $result['refresh_token'];
-                $token->token = $result['refresh_token'];
-                $token->updated_at = \Carbon\Carbon::now()->toDateTimeString();
-                $token->save();
-                $dt_token = [
-                    "token" => $result['access_token'],
-                    "refresh_token" => $result['refresh_token'],
-                    "expires_in" => $result['expires_in'],
-                    "scope" => $result['scope'],
-                    "created_at" => \Carbon\Carbon::now()->toDateTimeString(),
-                    "updated_at" => \Carbon\Carbon::now()->toDateTimeString()
+            $curl_options = array(
+                CURLOPT_URL => "https://zoom.us/oauth/token?grant_type=refresh_token&refresh_token=$refresh_token",
+                CURLOPT_HTTPHEADER => array(
+                    'Content-Type: application/json',
+                    'Accept: application/json',
+                    'Authorization: Basic ' .$auth
+                ),
+                CURLOPT_RETURNTRANSFER => 1
+            );
+            $curl_options[CURLOPT_POST] = 1;
+            curl_setopt_array($ch, $curl_options);
+            $result = curl_exec($ch);
+            $info = curl_getinfo($ch);
+            if ($result === false) {
+                throw new \Exception('CURL Error: ' . curl_error($ch), curl_errno($ch));
+            } else {
+                $result = json_decode($result, true);
+                $data = [
+                    'url' => $info['url'],
+                    'http_code' => $info['http_code'],
+                    'primary_ip' => $info['primary_ip'],
+                    'local_ip' => $info['local_ip'],
                 ];
-                $access_token = \App\Models\ZoomCredentials::where('grant_type', 'access_token')->update($dt_token);
+                if($info['http_code'] != 401){
+                    $token->refresh_token = $result['refresh_token'];
+                    $token->token = $result['refresh_token'];
+                    $token->updated_at = \Carbon\Carbon::now()->toDateTimeString();
+                    $token->save();
+                    $dt_token = [
+                        "refresh_token" => $result['refresh_token'],
+                        "expires_in" => $result['expires_in'],
+                        "scope" => $result['scope'],
+                        "created_at" => \Carbon\Carbon::now()->toDateTimeString(),
+                        "updated_at" => \Carbon\Carbon::now()->toDateTimeString()
+                    ];
+                    $access_token = \App\Models\ZoomCredentials::where('grant_type', 'access_token')->update(array_merge(['token' => $result['access_token']], $dt_token));
+                    $refresh_token = \App\Models\ZoomCredentials::where('grant_type', 'refresh_token')->update(array_merge(['token' => $result['refresh_token']], $dt_token));
+                }
+                    \App\Models\ZoomCredentials::where('grant_type', 'refresh_token')->update([
+                        "response" => json_encode(array_merge($data,$result))
+                    ]);
+                
             }
-            
-        }
-        return array_merge($data,$result);
+            return array_merge($data,$result);
+         }
+        
      }
 
     /**
@@ -426,7 +458,7 @@ class Meetings
                     'created_at' => \Carbon\Carbon::now()->toDateTimeString(), 
                     'updated_at' => \Carbon\Carbon::now()->toDateTimeString(), 
                 ];
-                array_merge(['token' => $result['access_token']], $token);
+                // array_merge(['token' => $result['access_token']], $token);
                 // update access token
                 \App\Models\ZoomCredentials::where('grant_type', 'access_token')->update(array_merge(['token' => $result['access_token']], $token));
                 \App\Models\ZoomCredentials::where('grant_type', 'refresh_token')->update(array_merge(['token' => $result['refresh_token']], $token));
